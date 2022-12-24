@@ -32,7 +32,7 @@ def extract(spark):
 def transform(df): 
     location = df.select(df['postal code'].alias('zipcode'), 'city', 'state', 'county').dropDuplicates()
     vehicle = df.select(df['VIN (1-10)'].alias('VIN'),'make', 'model', df['model year'].alias('model_year')).dropDuplicates()
-    electric = df.select('VIN (1-10)','Electric Vehicle Type' \
+    electric = df.select(df['VIN (1-10)'].alias('VIN'),'Electric Vehicle Type' \
     , df['Clean Alternative Fuel Vehicle (CAFV) Eligibility'].alias('CAFV Eligbility') \
         , 'Electric Utility').dropDuplicates()
     lookup = df.select(df['postal code'].alias('zipcode'), df['VIN (1-10)'].alias('VIN')).dropDuplicates()
