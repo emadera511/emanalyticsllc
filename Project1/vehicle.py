@@ -4,8 +4,9 @@ findspark.init('/home/emanalytics/spark-3.3.1-bin-hadoop3')
 import pyspark
 
 from pyspark.sql import SparkSession
-from pyspark.sql import Row
+from pyspark.sql import Row, functions as f
 from lib.DataFlow import *
+from pyspark.sql.window import Window
 
 ymlData = read_file('Project1/config/config.yaml')
 
@@ -30,12 +31,44 @@ def extract(spark):
     return df 
 
 def transform(df): 
-    location = df.select(df['postal code'].alias('zipcode'), 'city', 'state', 'county').dropDuplicates()
-    vehicle = df.select(df['VIN (1-10)'].alias('VIN'),'make', 'model', df['model year'].alias('model_year')).dropDuplicates()
-    electric = df.select(df['VIN (1-10)'].alias('VIN'),'Electric Vehicle Type' \
+    df = df.withColumn('zipcode', df['postal code']).withColumn('VIN', df['VIN (1-10)'])
+    df.createOrReplaceTempView('data')
+    df = spark.sql("""
+
+                with zips as ( 
+                        select *
+                        , row_number() over(order by zipcode) ziprow
+                    from (
+                                select distinct zipcode 
+                                from data
+                    ) t
+                ), vins as (
+                        select *
+                        , row_number() over(order by vin) vinrow
+                        from (
+                                select distinct VIN
+                                from data 
+                    ) t 
+                )
+                select d.*, z.ziprow, v.vinrow
+                from data d 
+                join zips z on d.zipcode = z.zipcode 
+                join vins v on d.VIN = v.VIN
+                order by z.ziprow desc 
+                    
+
+                """)
+
+    location = df.select('ziprow', df['postal code'].alias('zipcode'), 'city', 'state', 'county').dropDuplicates()
+
+    vehicle = df.select('vinrow', df['VIN (1-10)'].alias('VIN'),'make', 'model', df['model year'].alias('model_year')).dropDuplicates()
+
+    electric = df.select('vinrow', df['VIN (1-10)'].alias('VIN'),'Electric Vehicle Type' \
     , df['Clean Alternative Fuel Vehicle (CAFV) Eligibility'].alias('CAFV Eligbility') \
         , 'Electric Utility').dropDuplicates()
-    lookup = df.select(df['postal code'].alias('zipcode'), df['VIN (1-10)'].alias('VIN')).dropDuplicates()
+
+    lookup = df.select('ziprow', 'vinrow').dropDuplicates()
+
     data = {'location': location, 'vehicle': vehicle, 'electric': electric, 'lookup': lookup}
     return data
 
