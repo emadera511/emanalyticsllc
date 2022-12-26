@@ -11,7 +11,7 @@ df2=df1[(df1['Year'] == 2014) & (df1['Gender']=='F')]
 
 for c in df2.columns: 
     if c == 'Name': 
-        print(c)
+        print(df2[df2[c] == 'Olivia'])
         
         
 
