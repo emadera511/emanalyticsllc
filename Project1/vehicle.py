@@ -36,14 +36,14 @@ def transform(df):
     df = spark.sql("""
 
                 with zips as ( 
-                        select *
+                        select distinct *
                         , row_number() over(order by zipcode) ziprow
                     from (
                                 select distinct zipcode 
                                 from data
                     ) t
                 ), vins as (
-                        select *
+                        select distinct *
                         , row_number() over(order by vin) vinrow
                         from (
                                 select distinct VIN
@@ -57,9 +57,9 @@ def transform(df):
                 order by z.ziprow desc 
                     
 
-                """)
+                """).dropDuplicates()
 
-    location = df.select('ziprow', df['postal code'].alias('zipcode'), 'city', 'state', 'county').dropDuplicates()
+    location = df.select('ziprow', df['postal code'].alias('zipcode'), 'city', 'state').dropDuplicates()
 
     vehicle = df.select('vinrow', df['VIN (1-10)'].alias('VIN'),'make', 'model', df['model year'].alias('model_year')).dropDuplicates()
 
