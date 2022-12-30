@@ -37,9 +37,9 @@ def transform(df):
 
                 with zips as ( 
                         select distinct *
-                        , row_number() over(order by zipcode) ziprow
+                        , row_number() over(order by zipcode, City, County) ziprow
                     from (
-                                select distinct zipcode 
+                                select distinct zipcode, City, County
                                 from data
                     ) t
                 ), vins as (
@@ -53,23 +53,20 @@ def transform(df):
                 select d.*, z.ziprow, v.vinrow
                 from data d 
                 join zips z on d.zipcode = z.zipcode 
+                    and d.City = z.City and d.County = z.County
                 join vins v on d.VIN = v.VIN
                 order by z.ziprow desc 
                     
 
-                """).dropDuplicates()
+                """)
 
     location = df.select('ziprow', df['postal code'].alias('zipcode'), 'city', 'state').dropDuplicates()
 
     vehicle = df.select('vinrow', df['VIN (1-10)'].alias('VIN'),'make', 'model', df['model year'].alias('model_year')).dropDuplicates()
 
-    electric = df.select('vinrow', df['VIN (1-10)'].alias('VIN'),'Electric Vehicle Type' \
-    , df['Clean Alternative Fuel Vehicle (CAFV) Eligibility'].alias('CAFV Eligbility') \
-        , 'Electric Utility').dropDuplicates()
+    lookup = df.select('ziprow', 'vinrow')
 
-    lookup = df.select('ziprow', 'vinrow').dropDuplicates()
-
-    data = {'location': location, 'vehicle': vehicle, 'electric': electric, 'lookup': lookup}
+    data = {'location': location, 'vehicle': vehicle, 'lookup': lookup}
     return data
 
 def load(table, name): 
